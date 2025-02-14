@@ -95,6 +95,10 @@ Este projeto foi desenvolvido como **trabalho final do curso Embarca Tech - IFPI
 - O efeito final de vitória exibe diversas cores por 2 segundos antes de desligar os LEDs.
 - Após uma vitória ou derrota o jogo é inicalizado.
 
+## 🌀 Fluxograma
+
+![Fluxograma do Simon Game](fluxograma.png)
+
 ## 📸 Demonstração
 
 ## 👩‍💻 Estrutura do Código
