@@ -97,7 +97,7 @@ Este projeto foi desenvolvido como **trabalho final do curso Embarca Tech - IFPI
 
 ## 🌀 Fluxograma
 
-![Fluxograma do Simon Game](_Fluxograma (1).png)
+![Fluxograma do Simon Game](fluxograma.png)
 
 ## 📸 Demonstração
 
