@@ -1,74 +1,60 @@
 #include <stdio.h>
-#include <math.h>
-#include <ctype.h>
 #include <string.h>
-#include <stdlib.h>
 #include "pico/stdlib.h"
-#include "neopixel.c"          // Biblioteca para controle da matriz de LEDs
+#include "neopixel.c"          
 #include "hardware/pwm.h"
 #include "hardware/i2c.h"
 #include "pico/binary_info.h"
 #include "inc/ssd1306.h"
 
+#define BUZZER 21
+#define LED_VERMELHO 13
+#define LED_VERDE 11
+#define LED_AZUL 12   
+#define BOTAO_A 5     
+#define BOTAO_B 6     
+// Definições para a matriz de LEDs
+#define LED_MATRIX_PINO 7
+#define LED_MATRIX_CONTA 25
+#define LED_CONTA 25
+// Número máximo de elementos na sequência do jogo
+#define SEQUENCIA_MAXIMA 16
+
 // Variáveis globais para o display OLED
 struct render_area frame_area;
-uint8_t ssd[1024]; // Tamanho máximo do buffer (ajuste conforme definido em ssd1306.h)
-
-// Definições de pinos para Simon e outros periféricos
-#define BUZZER_PIN 21
-#define LED_RED 13
-#define LED_GREEN 11
-#define LED_BLUE 12    // LED para azul (usado individualmente no jogo)
-#define BUTTON_A 5     // Botão A -> Vermelho
-#define BUTTON_B 6     // Botão B -> Verde (pressionados juntos: Azul)
-
-// Definições para a matriz de LEDs
-#define LED_MATRIX_PIN 7
-#define LED_MATRIX_COUNT 25
-#define LED_COUNT 25
+uint8_t ssd[1024]; // Tamanho máximo do buffer 
 
 const uint I2C_SDA = 14;
 const uint I2C_SCL = 15;
 
-// Parâmetros do ADC (não usados neste exemplo do Simon)
-#define ADC_CLOCK_DIV 96.f
-#define SAMPLES 2048
-#define SAMPLE_RATE 10000.0f
-
-// Número máximo de elementos na sequência do jogo
-#define MAX_SEQUENCE 16
-
 // Globais para o jogo Simon
-int sequence[MAX_SEQUENCE]; // Valores: 0 = vermelho, 1 = verde, 2 = azul
-int currentLength = 0;
+int sequencia[SEQUENCIA_MAXIMA]; // Valores: 0 = vermelho, 1 = verde, 2 = azul
+int sequencia_atual = 0;
 
-// ======================================================================
-// Funções de hardware
-// ======================================================================
 
-void pwm_init_buzzer(uint pin) {
-    gpio_set_function(pin, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(pin);
+void pwm_init_buzzer(uint pino) {
+    gpio_set_function(pino, GPIO_FUNC_PWM);
+    uint slice_num = pwm_gpio_to_slice_num(pino);
     pwm_config config = pwm_get_default_config();
     pwm_config_set_clkdiv(&config, 4.0f);
     pwm_init(slice_num, &config, true);
-    pwm_set_gpio_level(pin, 0);
+    pwm_set_gpio_level(pino, 0);
 }
 
-void tocarNotaDuracao(int frequency, int duracao) {
-    if (frequency == 0) {
-        pwm_set_gpio_level(BUZZER_PIN, 0);
+void tocarNotaDuracao(int frequencia, int duracao) {
+    if (frequencia == 0) {
+        pwm_set_gpio_level(BUZZER, 0);
         return;
     }
-    uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
-    uint32_t clock_freq = clock_get_hz(clk_sys);
+    uint slice_numero = pwm_gpio_to_slice_num(BUZZER);
+    uint32_t clock_frequencia = clock_get_hz(clk_sys);
     float clkdiv = 8.0f;
-    uint32_t top = (clock_freq / (clkdiv * frequency)) - 1;
-    pwm_set_wrap(slice_num, top);
-    pwm_set_clkdiv(slice_num, clkdiv);
-    pwm_set_gpio_level(BUZZER_PIN, top / 2);
+    uint32_t top = (clock_frequencia / (clkdiv * frequencia)) - 1;
+    pwm_set_wrap(slice_numero, top);
+    pwm_set_clkdiv(slice_numero, clkdiv);
+    pwm_set_gpio_level(BUZZER, top / 2);
     sleep_ms(duracao);
-    pwm_set_gpio_level(BUZZER_PIN, 0);
+    pwm_set_gpio_level(BUZZER, 0);
 }
 
 void tocarSomAcerto() {
@@ -83,96 +69,76 @@ void tocarSomErro() {
     tocarNotaDuracao(300, 150);
 }
 
-// Exibe mensagem no display OLED
 void exibirMensagem(const char *mensagem) {
     memset(ssd, 0, ssd1306_buffer_length);
     ssd1306_draw_string(ssd, 0, 0, (char *)mensagem);
     render_on_display(ssd, &frame_area);
 }
 
-// Debounce para botões
-bool debounceButton(uint pin) {
-    if (!gpio_get(pin)) {
-        sleep_ms(50);
-        if (!gpio_get(pin)) {
-            while (!gpio_get(pin));
-            return true;
-        }
-    }
-    return false;
-}
-
-// ======================================================================
-// Funções para o jogo Simon
-// ======================================================================
-
-// "Toca" uma cor: 0 = vermelho, 1 = verde, 2 = azul
-void playColor(int color) {
+void cor(int color) {
     if (color == 0) {
-        gpio_put(LED_RED, 1);
+        gpio_put(LED_VERMELHO, 1);
         tocarNotaDuracao(300, 300);
-        gpio_put(LED_RED, 0);
+        gpio_put(LED_VERMELHO, 0);
     } else if (color == 1) {
-        gpio_put(LED_GREEN, 1);
+        gpio_put(LED_VERDE, 1);
         tocarNotaDuracao(600, 300);
-        gpio_put(LED_GREEN, 0);
+        gpio_put(LED_VERDE, 0);
     } else if (color == 2) {
-        gpio_put(LED_BLUE, 1);
+        gpio_put(LED_AZUL, 1);
         tocarNotaDuracao(450, 300);
-        gpio_put(LED_BLUE, 0);
+        gpio_put(LED_AZUL, 0);
     }
     sleep_ms(200);
 }
 
-// Reproduz a sequência atual
-void playSequence(int *seq, int length) {
-    char msg[50];
-    sprintf(msg, "Rodada: %d", length);
-    exibirMensagem(msg);
+void comecarSequencia(int *seq, int length) {
+    char mensagem[50];
+    sprintf(mensagem, "Rodada: %d", length);
+    exibirMensagem(mensagem);
     sleep_ms(1000);
     for (int i = 0; i < length; i++) {
-        playColor(seq[i]);
+        cor(seq[i]);
         sleep_ms(200);
     }
     exibirMensagem("Sua vez!");
     sleep_ms(500);
 }
 
-
-int waitForButtonPress(void) {
+int esperarPorUmBotaoPressionado(void) {
     while (1) {
-        bool a = !gpio_get(BUTTON_A);
-        bool b = !gpio_get(BUTTON_B);
+        bool a = !gpio_get(BOTAO_A);
+        bool b = !gpio_get(BOTAO_B);
         if (a || b) {
-            sleep_ms(50); // Janela para ambos serem pressionados
-            a = !gpio_get(BUTTON_A);
-            b = !gpio_get(BUTTON_B);
+            sleep_ms(50); // Deounce para ambos serem pressionados
+            a = !gpio_get(BOTAO_A);
+            b = !gpio_get(BOTAO_B);
             if (a && b) {
-                while (!gpio_get(BUTTON_A) || !gpio_get(BUTTON_B));
+                while (!gpio_get(BOTAO_A) || !gpio_get(BOTAO_B));
                 sleep_ms(50);
-                gpio_put(LED_BLUE, 1);
+                gpio_put(LED_AZUL, 1);
                 tocarNotaDuracao(450, 300);
                 exibirMensagem("Azul");
                 sleep_ms(300);
-                gpio_put(LED_BLUE, 0);
+                gpio_put(LED_AZUL, 0);
                 return 2;
             } else if (a) {
-                while (!gpio_get(BUTTON_A));
+                while (!gpio_get(BOTAO_A));
                 sleep_ms(50);
-                gpio_put(LED_RED, 1);
+                gpio_put(LED_VERMELHO, 1);
                 tocarNotaDuracao(300, 300);
                 exibirMensagem("Vermelho");
                 sleep_ms(300);
-                gpio_put(LED_RED, 0);
+                gpio_put(LED_VERMELHO, 0);
                 return 0;
             } else if (b) {
-                while (!gpio_get(BUTTON_B));
+                while (!gpio_get(BOTAO_B));
                 sleep_ms(50);
-                gpio_put(LED_GREEN, 1);
+                gpio_put(LED_VERDE, 1);
                 tocarNotaDuracao(600, 300);
                 exibirMensagem("Verde");
                 sleep_ms(300);
-                gpio_put(LED_GREEN, 0);
+                gpio_put(LED_VERDE, 0);
                 return 1;
             }
         }
@@ -181,18 +147,17 @@ int waitForButtonPress(void) {
 }
 
 // Função para exibir uma cor na matriz de LEDs
-void display_color(uint8_t red, uint8_t green, uint8_t blue) {
-    for (int i = 0; i < LED_COUNT; i++) {
+void mostrarCorDisplay(uint8_t red, uint8_t green, uint8_t blue) {
+    for (int i = 0; i < LED_CONTA; i++) {
         npSetLED(i, red, green, blue);
     }
     npWrite();
 }
 
-
 // Função para executar a sequência de cores
-void play_victory_sequence() {
+void tocarSequenciaVitoria() {
     // Defina as cores que serão exibidas (vermelho, verde, azul, amarelo, ciano, magenta, branco)
-    uint8_t colors[][3] = {
+    uint8_t cores[][3] = {
         {255, 0, 0},    // Vermelho
         {0, 255, 0},    // Verde
         {0, 0, 255},    // Azul
@@ -201,52 +166,47 @@ void play_victory_sequence() {
         {255, 0, 255},  // Magenta
         {255, 255, 255} // Branco
     };
-    int num_colors = sizeof(colors) / sizeof(colors[0]);
+    int numero_cores = sizeof(cores) / sizeof(cores[0]);
 
     // Duração em milissegundos que cada cor ficará ativa
-    int color_duration = 200 / num_colors;
+    int duracao_cor = 2000 / numero_cores;
 
     // Exibe cada cor por um período específico
-    for (int i = 0; i < num_colors; i++) {
-        display_color(colors[i][0], colors[i][1], colors[i][2]);
-        sleep_ms(color_duration);
+    for (int i = 0; i < numero_cores; i++) {
+        mostrarCorDisplay(cores[i][0], cores[i][1], cores[i][2]);
+        sleep_ms(duracao_cor);
     }
 
-    // Desliga todos os LEDs após a sequência
-    display_color(0, 0, 0);
+    mostrarCorDisplay(0, 0, 0);
 }
 
-// Função principal do jogo Simon
 void simonGame(void) {
-    currentLength = 0;
+    sequencia_atual = 0;
     exibirMensagem("Simon Game\nComecando!");
     sleep_ms(2000);
     
     while (1) {
-        // Se atingir o tamanho máximo da sequência, o jogador venceu
-        if (currentLength >= MAX_SEQUENCE) {
+        if (sequencia_atual >= SEQUENCIA_MAXIMA) {
             exibirMensagem("Voce venceu!");
             tocarSomAcerto();
-            play_victory_sequence();
+            tocarSequenciaVitoria();
             sleep_ms(3000);
-            currentLength = 0;
+            sequencia_atual = 0;
             return; // Encerra o jogo (pode reiniciar no main)
         }
         
-        // Adiciona um novo elemento à sequência (valor aleatório entre 0 e 2)
-        sequence[currentLength] = rand() % 3;
-        currentLength++;
+        sequencia[sequencia_atual] = rand() % 3;
+        sequencia_atual++;
         
-        playSequence(sequence, currentLength);
+        comecarSequencia(sequencia, sequencia_atual);
         
-        // Aguarda a entrada do usuário para cada elemento da sequência
-        for (int i = 0; i < currentLength; i++) {
-            int botao = waitForButtonPress();
-            if (botao != sequence[i]) {
+        for (int i = 0; i < sequencia_atual; i++) {
+            int botao = esperarPorUmBotaoPressionado();
+            if (botao != sequencia[i]) {
                 exibirMensagem("Game Over!");
                 tocarSomErro();
                 sleep_ms(2000);
-                return; // Termina o jogo
+                return; 
             }
         }
         exibirMensagem("Acertou!");
@@ -257,26 +217,23 @@ void simonGame(void) {
 
 int main() {
     stdio_init_all();
-    pwm_init_buzzer(BUZZER_PIN);
+    pwm_init_buzzer(BUZZER);
     
-    // Inicializa botões e LEDs individuais para o jogo Simon
-    gpio_init(BUTTON_A);
-    gpio_set_dir(BUTTON_A, GPIO_IN);
-    gpio_pull_up(BUTTON_A);
-    gpio_init(BUTTON_B);
-    gpio_set_dir(BUTTON_B, GPIO_IN);
-    gpio_pull_up(BUTTON_B);
+    gpio_init(BOTAO_A);
+    gpio_set_dir(BOTAO_A, GPIO_IN);
+    gpio_pull_up(BOTAO_A);
+    gpio_init(BOTAO_B);
+    gpio_set_dir(BOTAO_B, GPIO_IN);
+    gpio_pull_up(BOTAO_B);
     
-    gpio_init(LED_RED);
-    gpio_set_dir(LED_RED, GPIO_OUT);
-    gpio_init(LED_GREEN);
-    gpio_set_dir(LED_GREEN, GPIO_OUT);
-    gpio_init(LED_BLUE);
-    gpio_set_dir(LED_BLUE, GPIO_OUT);
+    gpio_init(LED_VERMELHO);
+    gpio_set_dir(LED_VERMELHO, GPIO_OUT);
+    gpio_init(LED_VERDE);
+    gpio_set_dir(LED_VERDE, GPIO_OUT);
+    gpio_init(LED_AZUL);
+    gpio_set_dir(LED_AZUL, GPIO_OUT);
     
-    // Inicializa a matriz de LEDs
-    npInit(LED_MATRIX_PIN, LED_MATRIX_COUNT);
-    
+    npInit(LED_MATRIX_PINO, LED_MATRIX_CONTA);
     // Inicializa o I2C e o display OLED
     i2c_init(i2c1, ssd1306_i2c_clock * 1000);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
@@ -284,7 +241,6 @@ int main() {
     gpio_pull_up(I2C_SDA);
     gpio_pull_up(I2C_SCL);
     ssd1306_init();
-    
     // Configuração da área de renderização do display OLED
     frame_area.start_column = 0;
     frame_area.end_column = ssd1306_width - 1;
@@ -305,7 +261,6 @@ int main() {
     // Semente aleatória para o jogo
     srand(time_us_32());
     
-    // Loop principal: reinicia o jogo Simon sempre que terminar
     while (1) {
         simonGame();
         exibirMensagem("Reiniciando...");
