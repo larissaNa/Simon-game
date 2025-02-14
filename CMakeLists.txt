@@ -56,39 +56,39 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(microphone_dma C CXX ASM)
+project(simon_game C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(microphone_dma 
-    microphone_dma.c 
+add_executable(simon_game 
+    simon_game.c 
     inc/ssd1306_i2c.c   # Adiciona o driver do OLED ao projeto
 )
 
-pico_set_program_name(microphone_dma "microphone_dma")
-pico_set_program_version(microphone_dma "0.1")
+pico_set_program_name(simon_game "simon_game")
+pico_set_program_version(simon_game "0.1")
 
 # Generate PIO header
-pico_generate_pio_header(microphone_dma ${CMAKE_CURRENT_LIST_DIR}/ws2818b.pio)
+pico_generate_pio_header(simon_game ${CMAKE_CURRENT_LIST_DIR}/ws2818b.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(microphone_dma 0)
-pico_enable_stdio_usb(microphone_dma 1)
+pico_enable_stdio_uart(simon_game 0)
+pico_enable_stdio_usb(simon_game 1)
 
 # Add the standard library to the build
-target_link_libraries(microphone_dma
+target_link_libraries(simon_game
         pico_stdlib)
 
 # Add the standard include files to the build
-target_include_directories(microphone_dma PRIVATE
+target_include_directories(simon_game PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/inc
 )
 # Add any user requested libraries
-target_link_libraries(microphone_dma 
+target_link_libraries(simon_game 
         hardware_timer
         hardware_pio
         hardware_clocks
@@ -96,5 +96,5 @@ target_link_libraries(microphone_dma
         hardware_i2c
         )
 
-pico_add_extra_outputs(microphone_dma)
+pico_add_extra_outputs(simon_game)
 
