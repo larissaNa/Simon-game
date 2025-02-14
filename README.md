@@ -92,7 +92,259 @@ void pwm_init_buzzer(uint pino) {
     pwm_init(slice_num, &config, true);
     pwm_set_gpio_level(pino, 0);
 }
+```
+### 2. `tocarNotaDuracao`
+Reproduz uma nota musical por um tempo específico, calculando os parâmetros do PWM com base na frequência desejada. Calcula o divisor de clock e o valor máximo (top) para configurar o PWM e gerar a frequência desejada, tocando a nota pelo período especificado.
+```c
+void tocarNotaDuracao(int frequencia, int duracao) {
+    if (frequencia == 0) {
+        pwm_set_gpio_level(BUZZER, 0);
+        return;
+    }
+    uint slice_numero = pwm_gpio_to_slice_num(BUZZER);
+    uint32_t clock_frequencia = clock_get_hz(clk_sys);
+    float clkdiv = 8.0f;
+    uint32_t top = (clock_frequencia / (clkdiv * frequencia)) - 1;
+    pwm_set_wrap(slice_numero, top);
+    pwm_set_clkdiv(slice_numero, clkdiv);
+    pwm_set_gpio_level(BUZZER, top / 2);
+    sleep_ms(duracao);
+    pwm_set_gpio_level(BUZZER, 0);
+}
+```
+### 3. `tocarSomAcerto` e `tocarSomErro`
+Toca um som para indicar que a ação do jogador foi correta ou errada.
+```c
+void tocarSomAcerto() {
+    tocarNotaDuracao(523, 150);
+    sleep_ms(50);
+    tocarNotaDuracao(659, 150);
+}
+void tocarSomErro() {
+    tocarNotaDuracao(300, 150);
+    sleep_ms(50);
+    tocarNotaDuracao(300, 150);
+}
+```
+### 4. `exibirMensagem`
+Exibe uma mensagem no display OLED, atualizando o buffer e renderizando a string. Limpa o buffer do display, desenha a mensagem desejada e atualiza o OLED para exibir o texto.
+```c
+void exibirMensagem(const char *mensagem) {
+    memset(ssd, 0, ssd1306_buffer_length);
+    ssd1306_draw_string(ssd, 0, 0, (char *)mensagem);
+    render_on_display(ssd, &frame_area);
+}
+```
+### 5. `cor`
+Acende o LED correspondente à cor desejada e toca o som associado. Dependendo do valor de color, acende o LED (vermelho, verde ou azul) e toca a nota correspondente para sinalizar a cor.
+```c
+void cor(int color) {
+    if (color == 0) {
+        gpio_put(LED_VERMELHO, 1);
+        tocarNotaDuracao(300, 300);
+        gpio_put(LED_VERMELHO, 0);
+    } else if (color == 1) {
+        gpio_put(LED_VERDE, 1);
+        tocarNotaDuracao(600, 300);
+        gpio_put(LED_VERDE, 0);
+    } else if (color == 2) {
+        gpio_put(LED_AZUL, 1);
+        tocarNotaDuracao(450, 300);
+        gpio_put(LED_AZUL, 0);
+    }
+    sleep_ms(200);
+}
+```
+### 6. `comecarSequencia`
+Exibe a sequência atual (rodada) no display OLED e nos LEDs. Mostra a rodada atual e, em seguida, percorre a sequência de cores chamando a função cor para cada item. Ao final, avisa o jogador que é sua vez de reproduzir a sequência.
+```c
+void comecarSequencia(int *seq, int length) {
+    char mensagem[50];
+    sprintf(mensagem, "Rodada: %d", length);
+    exibirMensagem(mensagem);
+    sleep_ms(1000);
+    for (int i = 0; i < length; i++) {
+        cor(seq[i]);
+        sleep_ms(200);
+    }
+    exibirMensagem("Sua vez!");
+    sleep_ms(500);
+}
+```
+### 7. `esperarPorUmBotaoPressionado`
+Aguarda a entrada do usuário, detectando qual botão foi pressionado e retornando o valor associado à cor. Monitora constantemente os botões com debounce. Se ambos os botões forem pressionados, interpreta como azul; caso contrário, identifica se foi vermelho ou verde e retorna o valor correspondente.
+```c
+int esperarPorUmBotaoPressionado(void) {
+    while (1) {
+        bool a = !gpio_get(BOTAO_A);
+        bool b = !gpio_get(BOTAO_B);
+        if (a || b) {
+            sleep_ms(50); // Debounce
+            a = !gpio_get(BOTAO_A);
+            b = !gpio_get(BOTAO_B);
+            if (a && b) {
+                while (!gpio_get(BOTAO_A) || !gpio_get(BOTAO_B));
+                sleep_ms(50);
+                gpio_put(LED_AZUL, 1);
+                tocarNotaDuracao(450, 300);
+                exibirMensagem("Azul");
+                sleep_ms(300);
+                gpio_put(LED_AZUL, 0);
+                return 2;
+            } else if (a) {
+                while (!gpio_get(BOTAO_A));
+                sleep_ms(50);
+                gpio_put(LED_VERMELHO, 1);
+                tocarNotaDuracao(300, 300);
+                exibirMensagem("Vermelho");
+                sleep_ms(300);
+                gpio_put(LED_VERMELHO, 0);
+                return 0;
+            } else if (b) {
+                while (!gpio_get(BOTAO_B));
+                sleep_ms(50);
+                gpio_put(LED_VERDE, 1);
+                tocarNotaDuracao(600, 300);
+                exibirMensagem("Verde");
+                sleep_ms(300);
+                gpio_put(LED_VERDE, 0);
+                return 1;
+            }
+        }
+        sleep_ms(10);
+    }
+}
+```
+### 8. `mostrarCorDisplay`
+Atualiza a matriz de LEDs para exibir uma cor definida. Percorre todos os LEDs da matriz, configurando a cor (RGB) para cada um e atualizando o display da matriz.
+```c
+void mostrarCorDisplay(uint8_t red, uint8_t green, uint8_t blue) {
+    for (int i = 0; i < LED_CONTA; i++) {
+        npSetLED(i, red, green, blue);
+    }
+    npWrite();
+}
+```
+### 9. `tocarSequenciaVitoria`
+Exibe uma sequência de cores na matriz de LEDs para sinalizar a vitória do jogador. Percorre uma lista de cores pré-definida, exibindo cada cor na matriz de LEDs por um tempo proporcional, e ao final desliga os LEDs.
+´´´c
+void tocarSequenciaVitoria() {
+    uint8_t cores[][3] = {
+        {255, 0, 0},    // Vermelho
+        {0, 255, 0},    // Verde
+        {0, 0, 255},    // Azul
+        {255, 255, 0},  // Amarelo
+        {0, 255, 255},  // Ciano
+        {255, 0, 255},  // Magenta
+        {255, 255, 255} // Branco
+    };
+    int numero_cores = sizeof(cores) / sizeof(cores[0]);
+    int duracao_cor = 2000 / numero_cores;
 
+    for (int i = 0; i < numero_cores; i++) {
+        mostrarCorDisplay(cores[i][0], cores[i][1], cores[i][2]);
+        sleep_ms(duracao_cor);
+    }
+    mostrarCorDisplay(0, 0, 0);
+}
+´´´
+### 10. `simonGame`
+Gerencia a lógica principal do jogo: gera a sequência, exibe para o usuário e verifica se a resposta está correta. Inicializa a sequência e, a cada rodada, adiciona uma nova cor. Exibe a sequência e aguarda a resposta do usuário, verificando se a entrada corresponde ao padrão gerado. Se o jogador errar, encerra a rodada; se completar, o jogo continua ou, ao atingir o máximo, o jogador vence.
+```c
+void simonGame(void) {
+    sequencia_atual = 0;
+    exibirMensagem("Simon Game\nComecando!");
+    sleep_ms(2000);
+    
+    while (1) {
+        if (sequencia_atual >= SEQUENCIA_MAXIMA) {
+            exibirMensagem("Voce venceu!");
+            tocarSomAcerto();
+            tocarSequenciaVitoria();
+            sleep_ms(3000);
+            sequencia_atual = 0;
+            return;
+        }
+        
+        sequencia[sequencia_atual] = rand() % 3;
+        sequencia_atual++;
+        
+        comecarSequencia(sequencia, sequencia_atual);
+        
+        for (int i = 0; i < sequencia_atual; i++) {
+            int botao = esperarPorUmBotaoPressionado();
+            if (botao != sequencia[i]) {
+                exibirMensagem("Game Over!");
+                tocarSomErro();
+                sleep_ms(2000);
+                return;
+            }
+        }
+        exibirMensagem("Acertou!");
+        tocarSomAcerto();
+        sleep_ms(1000);
+    }
+}
+```
+### 11. `main`
+Inicializa os periféricos, configura o display e os botões, e entra num loop chamando a função do jogo. A função main inicializa os módulos essenciais (PWM, GPIO, I2C, display OLED, matriz de LEDs), exibe as mensagens iniciais e entra num loop que reinicia o jogo após cada término de rodada.
+```c
+int main() {
+    stdio_init_all();
+    pwm_init_buzzer(BUZZER);
+    
+    gpio_init(BOTAO_A);
+    gpio_set_dir(BOTAO_A, GPIO_IN);
+    gpio_pull_up(BOTAO_A);
+    gpio_init(BOTAO_B);
+    gpio_set_dir(BOTAO_B, GPIO_IN);
+    gpio_pull_up(BOTAO_B);
+    
+    gpio_init(LED_VERMELHO);
+    gpio_set_dir(LED_VERMELHO, GPIO_OUT);
+    gpio_init(LED_VERDE);
+    gpio_set_dir(LED_VERDE, GPIO_OUT);
+    gpio_init(LED_AZUL);
+    gpio_set_dir(LED_AZUL, GPIO_OUT);
+    
+    npInit(LED_MATRIX_PINO, LED_MATRIX_CONTA);
+    
+    // Inicializa I2C e display OLED
+    i2c_init(i2c1, ssd1306_i2c_clock * 1000);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+    ssd1306_init();
+    
+    // Configuração da área de renderização do display OLED
+    frame_area.start_column = 0;
+    frame_area.end_column = ssd1306_width - 1;
+    frame_area.start_page = 0;
+    frame_area.end_page = ssd1306_n_pages - 1;
+    calculate_render_area_buffer_length(&frame_area);
+    memset(ssd, 0, ssd1306_buffer_length);
+    render_on_display(ssd, &frame_area);
+    
+    // Exibe mensagem de mapeamento dos botões
+    exibirMensagem("Botao A: Vermelho");
+    sleep_ms(3000);
+    exibirMensagem("Botao B: Verde");
+    sleep_ms(3000);
+    exibirMensagem("Ambos: Azul");
+    sleep_ms(3000);
+    
+    srand(time_us_32());
+    
+    while (1) {
+        simonGame();
+        exibirMensagem("Reiniciando...");
+        sleep_ms(3000);
+    }
+    
+    return 0;
+}
+```
 
 ## 📜 Como Rodar o Projeto?
 
