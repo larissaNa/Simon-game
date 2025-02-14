@@ -79,6 +79,21 @@ Este projeto foi desenvolvido como **trabalho final do curso Embarca Tech - IFPI
 - `int sequencia[SEQUENCIA_MAXIMA]`: Array que armazena a sequência de cores que o jogador precisa repetir.
 - `int sequencia_atual = 0`: Índice que indica a posição atual na sequência durante o jogo.
 
+## Principais funções
+### 1. `pwm_init_buzzer`
+
+Inicializa o buzzer configurando o pino para gerar sinais PWM. Esta função configura o pino do buzzer para funcionar em modo PWM, permitindo a reprodução de diferentes frequências para gerar sons.
+```c
+void pwm_init_buzzer(uint pino) {
+    gpio_set_function(pino, GPIO_FUNC_PWM);
+    uint slice_num = pwm_gpio_to_slice_num(pino);
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 4.0f);
+    pwm_init(slice_num, &config, true);
+    pwm_set_gpio_level(pino, 0);
+}
+
+
 ## 📜 Como Rodar o Projeto?
 
 1. Clone este repositório:
