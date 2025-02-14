@@ -83,7 +83,7 @@ Este projeto foi desenvolvido como **trabalho final do curso Embarca Tech - IFPI
 
 1. Clone este repositório:
    ```sh
-   git clone https://github.com/seu-usuario/simon-game-bitdoglab.git
+   git clone https://github.com/seu-usuario/simon-game-bitdoglab.git](https://github.com/larissaNa/Simon-game.git
    ```
 2. Compile e carregue o código na BitDogLab utilizando o ambiente adequado.
 3. Conecte o cabo da BitDogLab no seu pc.
