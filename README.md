@@ -42,7 +42,7 @@ Este projeto foi desenvolvido como **trabalho final do curso Embarca Tech - IFPI
 
 - ✅ **Sequência Dinâmica**: O jogo aumenta o nível de dificuldade a cada acerto.
 - ✅ **Feedback Sonoro**: Sons distintos para acerto, erro e vitória.
-- ✅ **Animação de Vitória**: Exibição de diversas cores por 3 segundos ao alcançar o limite de 16 acertos.
+- ✅ **Animação de Vitória**: Exibição de diversas cores por 2 segundos ao alcançar o limite de 16 acertos.
 - ✅ **Display OLED**: Instruções, status do jogo e mensagens de fim de jogo.
 - ✅ **Desligamento Automático dos LEDs**: Os LEDs são desativados após a animação final para economia de energia.
 
