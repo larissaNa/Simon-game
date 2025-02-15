@@ -127,11 +127,38 @@ void tocarSomErro() {
 }
 ```
 ### 4. `exibirMensagem`
-Exibe uma mensagem no display OLED, atualizando o buffer e renderizando a string. Limpa o buffer do display, desenha a mensagem desejada e atualiza o OLED para exibir o texto.
+Exibe uma mensagem no display OLED, atualizando o buffer e renderizando a string. Limpa o buffer do display, desenha a mensagem desejada e atualiza o OLED para exibir o texto com quebra de linhas.
 ```c
 void exibirMensagem(const char *mensagem) {
     memset(ssd, 0, ssd1306_buffer_length);
-    ssd1306_draw_string(ssd, 0, 0, (char *)mensagem);
+    int line_height = 8;    // Define a altura de cada linha (ajuste conforme a fonte utilizada)
+    int y = 0;              // Posição vertical inicial para a primeira linha
+    int start = 0;          // Índice inicial da substring atual
+    int i;               
+    char linha[128];        // Buffer para armazenar temporariamente cada linha de texto
+
+    // Percorre a string mensagem até o final
+    for (i = 0; mensagem[i] != '\0'; i++) {
+        // Se encontrar o caractere de nova linha
+        if (mensagem[i] == '\n') {
+            int len = i - start;  // Calcula o tamanho da linha atual
+            if (len >= sizeof(linha))
+                len = sizeof(linha) - 1;
+            strncpy(linha, mensagem + start, len); // Copia a substring para o buffer
+            linha[len] = '\0';      // Finaliza a string com caractere nulo
+            ssd1306_draw_string(ssd, 0, y, linha); // Desenha a linha no buffer do display
+            y += line_height;       // Incrementa a posição vertical para a próxima linha
+            start = i + 1;          // Atualiza o índice de início para a próxima linha
+        }
+    }
+    if (i > start) {
+        int len = i - start;
+        if (len >= sizeof(linha))
+            len = sizeof(linha) - 1;
+        strncpy(linha, mensagem + start, len);
+        linha[len] = '\0';
+        ssd1306_draw_string(ssd, 0, y, linha);
+    }
     render_on_display(ssd, &frame_area);
 }
 ```
@@ -253,17 +280,22 @@ Gerencia a lógica principal do jogo: gera a sequência, exibe para o usuário e
 ```c
 void simonGame(void) {
     sequencia_atual = 0;
-    exibirMensagem("Simon Game\nComecando!");
+    exibirMensagem("\n   Simon Game\n   Comecando!");
     sleep_ms(2000);
+    // Exibe mensagem inicial informando o mapeamento dos botões
+    exibirMensagem("Botao A:Vermelho\n\nBotao B: Verde\n\nAmbos: Azul");
+    sleep_ms(4000);
+    exibirMensagem("3...2...1\n\n\nGo!");
+    sleep_ms(1500);
     
     while (1) {
         if (sequencia_atual >= SEQUENCIA_MAXIMA) {
-            exibirMensagem("Voce venceu!");
+            exibirMensagem("\n\nVoce venceu!");
             tocarSomAcerto();
             tocarSequenciaVitoria();
             sleep_ms(3000);
             sequencia_atual = 0;
-            return;
+            return; // Encerra o jogo (pode reiniciar no main)
         }
         
         sequencia[sequencia_atual] = rand() % 3;
@@ -274,20 +306,20 @@ void simonGame(void) {
         for (int i = 0; i < sequencia_atual; i++) {
             int botao = esperarPorUmBotaoPressionado();
             if (botao != sequencia[i]) {
-                exibirMensagem("Game Over!");
+                exibirMensagem("\n\nGame Over!");
                 tocarSomErro();
                 sleep_ms(2000);
-                return;
+                return; 
             }
         }
-        exibirMensagem("Acertou!");
+        exibirMensagem("\n\nAcertou!");
         tocarSomAcerto();
         sleep_ms(1000);
     }
 }
 ```
 ### 11. `main`
-Inicializa os periféricos, configura o display e os botões, e entra num loop chamando a função do jogo. A função main inicializa os módulos essenciais (PWM, GPIO, I2C, display OLED, matriz de LEDs), exibe as mensagens iniciais e entra num loop que reinicia o jogo após cada término de rodada.
+Inicializa os periféricos, configura o display e os botões, e entra num loop chamando a função do jogo. A função main inicializa os módulos essenciais (PWM, GPIO, I2C, display OLED, matriz de LEDs) e entra num loop que reinicia o jogo após cada término de rodada.
 ```c
 int main() {
     stdio_init_all();
@@ -326,19 +358,11 @@ int main() {
     memset(ssd, 0, ssd1306_buffer_length);
     render_on_display(ssd, &frame_area);
     
-    // Exibe mensagem de mapeamento dos botões
-    exibirMensagem("Botao A: Vermelho");
-    sleep_ms(3000);
-    exibirMensagem("Botao B: Verde");
-    sleep_ms(3000);
-    exibirMensagem("Ambos: Azul");
-    sleep_ms(3000);
-    
     srand(time_us_32());
     
     while (1) {
         simonGame();
-        exibirMensagem("Reiniciando...");
+        exibirMensagem("\n\nReiniciando...");
         sleep_ms(3000);
     }
     
