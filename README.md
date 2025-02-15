@@ -254,7 +254,7 @@ void mostrarCorDisplay(uint8_t red, uint8_t green, uint8_t blue) {
 ```
 ### 9. `tocarSequenciaVitoria`
 Exibe uma sequência de cores na matriz de LEDs para sinalizar a vitória do jogador. Percorre uma lista de cores pré-definida, exibindo cada cor na matriz de LEDs por um tempo proporcional, e ao final desliga os LEDs.
-´´´c
+```c
 void tocarSequenciaVitoria() {
     uint8_t cores[][3] = {
         {255, 0, 0},    // Vermelho
@@ -274,7 +274,7 @@ void tocarSequenciaVitoria() {
     }
     mostrarCorDisplay(0, 0, 0);
 }
-´´´
+```
 ### 10. `simonGame`
 Gerencia a lógica principal do jogo: gera a sequência, exibe para o usuário e verifica se a resposta está correta. Inicializa a sequência e, a cada rodada, adiciona uma nova cor. Exibe a sequência e aguarda a resposta do usuário, verificando se a entrada corresponde ao padrão gerado. Se o jogador errar, encerra a rodada; se completar, o jogo continua ou, ao atingir o máximo, o jogador vence.
 ```c
