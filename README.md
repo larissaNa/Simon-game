@@ -392,7 +392,7 @@ int main() {
 
 ## 📸 Demonstração
 
-[Link para o video explicativo]((https://youtu.be/ywLIH0j3Sgs))
+[Link para o video explicativo](https://youtu.be/ywLIH0j3Sgs)
 
 ## 👩‍💻 Estrutura do Código
 - `simon_game.c` - Código principal com a lógica do jogo.
